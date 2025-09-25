@@ -1,0 +1,29 @@
+# Enhanced Contract Financial Analyzer - Dependencies
+# Install with: pip install -r requirements.txt
+
+# Core AI and API
+anthropic>=0.25.0
+
+# Excel file generation and manipulation
+openpyxl>=3.1.0
+
+# Data processing and analysis
+pandas>=2.0.0
+
+# PDF file reading support
+PyPDF2>=3.0.0
+
+# Word document (.docx) reading support
+python-docx>=0.8.11
+
+# GUI framework (usually comes with Python)
+# tkinter - included with Python standard library
+
+# Building standalone executables
+pyinstaller>=5.13.0
+
+# Optional: For enhanced PDF processing (alternative to PyPDF2)
+# pymupdf>=1.23.0
+
+# Optional: For additional file format support
+# pdfplumber>=0.10.0

@@ -1,0 +1,88 @@
+# Enhanced Contract Financial Analyzer - Git Ignore File
+# Specifies which files and directories Git should ignore
+
+# Build outputs and distribution files
+build/
+dist/
+*.spec
+
+# Python compiled bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Python virtual environments
+venv/
+env/
+ENV/
+.venv/
+
+# PyInstaller temporary files
+*.manifest
+
+# API keys and configuration files (IMPORTANT: Never commit API keys)
+config.txt
+.contract_analyzer/
+*.key
+*.secret
+
+# macOS specific files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+.AppleDouble
+.LSOverride
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.sublime-workspace
+.sublime-project
+
+# Logs and databases
+*.log
+*.sqlite
+*.sqlite3
+*.db
+
+# Temporary files
+*.tmp
+*.temp
+temp/
+tmp/
+
+# Test files and coverage reports
+.coverage
+.pytest_cache/
+htmlcov/
+.tox/
+.nox/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# pyenv version file
+.python-version
+
+# Pipfile.lock (keep Pipfile if using pipenv)
+Pipfile.lock
+
+# Environments and secrets
+.env
+.env.local
+.env.*.local
+
+# macOS application bundles
+*.app
+*.dmg
+
+# Backup files
+*.bak
+*.backup
+*.orig
