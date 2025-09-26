@@ -72,7 +72,12 @@ class HighPrecisionContractAnalyzer:
         if not currency_string or currency_string in ['null', 'N/A', 'Not found', '']:
             return None
         
-        cleaned = re.sub(r'[^\d.-]', '', str(currency_string))
+        temp_str = str(currency_string).strip()
+        if temp_str.startswith(','):
+            temp_str = '0' + temp_str
+        if temp_str.startswith('.'):
+            temp_str = '0' + temp_str
+        cleaned = re.sub(r'[^\d.-]', '', temp_str)
         try:
             return float(cleaned) if cleaned else None
         except ValueError:
@@ -83,7 +88,12 @@ class HighPrecisionContractAnalyzer:
         if not hours_string or hours_string in ['null', 'N/A', 'Not found', '']:
             return None
         
-        cleaned = re.sub(r'[^\d.-]', '', str(hours_string))
+        temp_str = str(hours_string).strip()
+        if temp_str.startswith(','):
+            temp_str = '0' + temp_str
+        if temp_str.startswith('.'):
+            temp_str = '0' + temp_str
+        cleaned = re.sub(r'[^\d.-]', '', temp_str)
         try:
             return float(cleaned) if cleaned else None
         except ValueError:
@@ -212,25 +222,25 @@ class HighPrecisionContractAnalyzer:
         CLAUDE EXTRACTED DATA:
         {claude_data}
         
-        Return the validated data as JSON with confidence levels:
+                Return ONLY valid JSON in this exact format (no other text):
         {{
-            "total_contract_value": "best value",
-            "hourly_rate": "best value",
-            "start_date": "best value",
-            "end_date": "best value", 
-            "payment_terms": "best value",
-            "maximum_hours": "best value",
-            "daily_hour_limit": "best value",
+            "total_contract_value": "actual_value_or_null",
+            "hourly_rate": "actual_value_or_null",
+            "start_date": "YYYY-MM-DD_or_null",
+            "end_date": "YYYY-MM-DD_or_null",
+            "payment_terms": "actual_terms_or_null",
+            "maximum_hours": "number_or_null",
+            "daily_hour_limit": "number_or_null",
             "confidence_scores": {{
-                "total_contract_value": "HIGH/MEDIUM/LOW",
-                "hourly_rate": "HIGH/MEDIUM/LOW",
-                "start_date": "HIGH/MEDIUM/LOW",
-                "end_date": "HIGH/MEDIUM/LOW",
-                "payment_terms": "HIGH/MEDIUM/LOW",
-                "maximum_hours": "HIGH/MEDIUM/LOW",
-                "daily_hour_limit": "HIGH/MEDIUM/LOW"
+                "total_contract_value": "HIGH",
+                "hourly_rate": "MEDIUM",
+                "start_date": "HIGH",
+                "end_date": "HIGH",
+                "payment_terms": "HIGH",
+                "maximum_hours": "LOW",
+                "daily_hour_limit": "LOW"
             }},
-            "validation_notes": "any discrepancies or concerns"
+            "validation_notes": "Brief summary of data quality"
         }}
         """
         
@@ -264,6 +274,15 @@ class HighPrecisionContractAnalyzer:
         """Send contract to Claude API for comprehensive financial analysis."""
         enhanced_analysis_prompt = """
         You are a Certified Public Accountant analyzing this contract for complete financial tracking requirements. Extract ALL financial information including:
+
+        BASIC CONTRACT INFORMATION (EXTRACT FIRST):
+        - Client name (party receiving services/goods)
+        - Vendor/Contractor name (party providing services/goods)  
+        - Contract number or ID
+        - Contract effective dates
+        - Contract title or project name
+
+        Then extract ALL financial information including:
 
         PRIMARY PAYMENT STRUCTURE:
         - Contract type (fixed payments, time & materials, milestone-based, etc.)
@@ -463,7 +482,7 @@ class HighPrecisionContractAnalyzer:
         confidence_scores = validated_data.get('confidence_scores', {}) if validated_data else {}
         
         contract_data = [
-            ["CONTRACT INFORMATION", "", "CONFIDENCE LEVEL"],
+            ["CONTRACT INFORMATION", "VALUE", "CONFIDENCE LEVEL"],
             ["Client", contract_info.get("client", ""), ""],
             ["Vendor/Contractor", contract_info.get("vendor", ""), ""],
             ["Contract ID", contract_info.get("contract_id", ""), ""],
@@ -502,12 +521,19 @@ class HighPrecisionContractAnalyzer:
             if label in ["CONTRACT INFORMATION", "THREE-PASS VALIDATION RESULTS", "TRACKING REQUIREMENTS"]:
                 cell_a.font = header_font
                 cell_a.fill = header_fill
+                cell_a.alignment = Alignment(horizontal="center")
+                cell_b.font = header_font
                 cell_b.fill = header_fill
+                cell_b.alignment = Alignment(horizontal="center")
+                cell_c.font = header_font
                 cell_c.fill = header_fill
+                cell_c.alignment = Alignment(horizontal="center")
             elif confidence == "HIGH":
                 cell_c.fill = confidence_fill
             elif confidence == "LOW":
                 cell_c.fill = warning_fill
+            else:
+                cell_b.alignment = Alignment(wrap_text=True, vertical="top")    
         
         # 2. Payment Tracking Sheet
         payment_sheet = wb.create_sheet("Payment Tracking")
@@ -749,11 +775,13 @@ class HighPrecisionContractAnalyzer:
             validation_info.append(["Status", "No validation data available"])
         
         for row_idx, (label, value) in enumerate(validation_info, 1):
-            validation_sheet.cell(row=row_idx, column=1, value=label)
-            validation_sheet.cell(row=row_idx, column=2, value=value)
+            cell_a = validation_sheet.cell(row=row_idx, column=1, value=label)
+            cell_b = validation_sheet.cell(row=row_idx, column=2, value=value)
             
             if label in ["VALIDATION METHODOLOGY", "CONFIDENCE LEVELS", "VALIDATION NOTES", "ACCURACY SUMMARY"]:
-                validation_sheet.cell(row=row_idx, column=1).font = Font(bold=True)
+                cell_a.font = Font(bold=True)
+            if label == "Notes":
+                cell_b.alignment = Alignment(wrap_text=True, vertical="top")
         
         # 7. Full Analysis Sheet
         analysis_sheet = wb.create_sheet("Full Analysis")
@@ -903,8 +931,13 @@ class ContractAnalyzerGUI:
         ttk.Button(output_entry_frame, text="Browse", command=self.browse_output_file, width=10).pack(side=tk.RIGHT, padx=(5, 0))
         
         # Set default output filename
-        self.output_file.set("contract_analysis_" + datetime.now().strftime("%Y%m%d_%H%M%S") + ".xlsx")
+        documents_path = Path.home() / "Documents"
+        default_filename = f"contract_analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+        self.output_file.set(str(documents_path / default_filename))
         
+        # Analysis Section
+        analysis_frame = ttk.LabelFrame(main_frame, text="Analysis", padding=15)
+        analysis_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 15))        
         # Analysis Section
         analysis_frame = ttk.LabelFrame(main_frame, text="Analysis", padding=15)
         analysis_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 15))
@@ -993,8 +1026,9 @@ class ContractAnalyzerGUI:
             self.contract_file.set(filename)
             # Update output filename based on input filename
             input_name = Path(filename).stem
+            documents_path = Path.home() / "Documents"
             output_name = f"{input_name}_analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
-            self.output_file.set(output_name)
+            self.output_file.set(str(documents_path / output_name))
             self.status_var.set(f"Contract file selected: {Path(filename).name}")
     
     def browse_output_file(self):
@@ -1090,7 +1124,8 @@ class ContractAnalyzerGUI:
             self.root.after(0, lambda: self._show_success(contract_info, validated_data, self.output_file.get()))
             
         except Exception as e:
-            self.root.after(0, lambda: self._show_error(str(e)))
+            error_message = str(e)
+            self.root.after(0, lambda: self._show_error(error_message))
     
     def _update_results(self, text):
         """Update results text - called from main thread."""
