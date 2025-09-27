@@ -423,28 +423,131 @@ class HighPrecisionContractAnalyzer:
                 model="claude-3-haiku-20240307",
                 max_tokens=2000,
                 messages=[{
-                    "role": "user", 
+                    "role": "user",
                     "content": extraction_prompt
                 }]
             )
-            
-            response_text = message.content[0].text
+
+            response_text = message.content[0].text.strip()
+
+            # Try to clean up the JSON response
+            if "```json" in response_text:
+                # Extract JSON from code blocks
+                start = response_text.find("```json") + 7
+                end = response_text.find("```", start)
+                if end != -1:
+                    response_text = response_text[start:end].strip()
+
+            # Try original method first
             start_idx = response_text.find('{')
             end_idx = response_text.rfind('}') + 1
-            
+
             if start_idx != -1 and end_idx > start_idx:
                 json_str = response_text[start_idx:end_idx]
                 data = json.loads(json_str)
                 return (
-                    data.get("contract_info", {}), 
+                    data.get("contract_info", {}),
                     data.get("payment_schedule", []),
                     data.get("tracking_requirements", {})
                 )
             else:
-                return {"contract_type": "unknown"}, [], {}
-                
+                # Fallback: Try to extract basic info from the analysis text
+                return self._extract_fallback_data_gui(analysis, "No valid JSON structure found")
+
+        except json.JSONDecodeError as e:
+            # Fallback: Try to extract basic info from the analysis text
+            return self._extract_fallback_data_gui(analysis, str(e))
         except Exception as e:
-            return {"contract_type": "unknown"}, [], {}
+            # Return structures with fallback data
+            return self._extract_fallback_data_gui(analysis, str(e))
+
+    def _extract_fallback_data_gui(self, analysis_text: str, error_msg: str) -> Tuple[Dict, List[Dict], Dict]:
+        """Fallback method to extract basic contract info from analysis text"""
+
+        contract_info = {
+            "client": self._extract_from_text_gui(analysis_text, ["CLIENT:", "Client:", "client name", "receiving services"]),
+            "vendor": self._extract_from_text_gui(analysis_text, ["CONTRACTOR:", "Vendor:", "vendor name", "providing services"]),
+            "contract_id": self._extract_from_text_gui(analysis_text, ["Contract ID", "Agreement", "contract number"]),
+            "contract_type": self._extract_contract_type_gui(analysis_text),
+            "total_value": "unknown",
+            "start_date": None,
+            "end_date": None,
+            "payment_terms": "unknown",
+            "hourly_rate": "unknown",
+            "max_hours": None,
+            "max_daily_hours": None,
+            "invoice_frequency": "unknown",
+            "payment_timeline": "unknown"
+        }
+
+        # Basic payment schedule
+        payment_schedule = [{
+            "due_date": None,
+            "description": "Monthly invoice payment",
+            "amount": None,
+            "invoice_submission_due": None,
+            "expected_payment_date": None,
+            "notes": f"Extraction failed: {error_msg}"
+        }]
+
+        # Basic tracking requirements
+        tracking_requirements = {
+            "expense_tracking": {
+                "travel_expenses": "unknown",
+                "travel_policy": "unknown",
+                "meal_allowance": "unknown",
+                "equipment_costs": "unknown",
+                "pre_approval_required": "unknown"
+            },
+            "compliance": {
+                "w9_required": "unknown",
+                "invoice_requirements": "unknown",
+                "time_breakdown_required": "unknown",
+                "certifications_required": "unknown",
+                "reporting_deadlines": "unknown"
+            },
+            "budget_monitoring": {
+                "hour_tracking": "unknown",
+                "budget_caps": "unknown",
+                "warning_thresholds": "unknown",
+                "utilization_tracking": "unknown"
+            }
+        }
+
+        return contract_info, payment_schedule, tracking_requirements
+
+    def _extract_from_text_gui(self, text: str, search_terms: List[str]) -> str:
+        """Extract information from text using search terms"""
+        text_lower = text.lower()
+
+        for term in search_terms:
+            term_lower = term.lower()
+            if term_lower in text_lower:
+                # Find the line containing the term
+                lines = text.split('\n')
+                for line in lines:
+                    if term_lower in line.lower():
+                        # Extract the part after the term
+                        parts = line.split(':')
+                        if len(parts) > 1:
+                            result = parts[1].strip()
+                            if result and len(result) > 2:
+                                return result[:50]  # Limit length
+
+        return "Not specified"
+
+    def _extract_contract_type_gui(self, text: str) -> str:
+        """Extract contract type from analysis text"""
+        text_lower = text.lower()
+
+        if any(term in text_lower for term in ["time and materials", "hourly", "per hour"]):
+            return "Time and Materials"
+        elif any(term in text_lower for term in ["fixed price", "lump sum", "total contract"]):
+            return "Fixed Price"
+        elif any(term in text_lower for term in ["milestone", "deliverable"]):
+            return "Milestone-based"
+        else:
+            return "Unknown"
 
     def create_comprehensive_spreadsheet(self, contract_info: Dict, payment_schedule: List[Dict], 
                                        tracking_requirements: Dict, output_file: str, 

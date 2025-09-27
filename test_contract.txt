@@ -1,0 +1,41 @@
+CONSULTING SERVICES AGREEMENT
+
+This Consulting Services Agreement ("Agreement") is entered into on January 15, 2024, between:
+
+CLIENT: ABC Technology Corp.
+123 Main Street
+Silicon Valley, CA 94000
+
+CONTRACTOR: John Smith Consulting LLC
+456 Oak Avenue
+San Francisco, CA 94102
+
+PROJECT: Software Development Consulting
+
+SCOPE OF WORK:
+The Contractor will provide software development consulting services for the Client's mobile application project.
+
+COMPENSATION:
+- Hourly Rate: $125.00 per hour
+- Total Contract Value: Not to exceed $50,000
+- Maximum Hours: 400 hours
+- Daily Hour Limit: 8 hours per day
+
+PAYMENT TERMS:
+- Invoices submitted monthly
+- Payment due within Net 30 days of invoice receipt
+- All invoices must include detailed time breakdowns
+
+CONTRACT PERIOD:
+Start Date: February 1, 2024
+End Date: June 30, 2024
+
+EXPENSES:
+- Travel expenses will be reimbursed at actual cost with receipts
+- No meal allowances provided
+- Pre-approval required for expenses over $100
+
+COMPLIANCE:
+- W-9 form required before commencement
+- Time tracking required for all billable hours
+- Monthly progress reports due by 5th of following month
