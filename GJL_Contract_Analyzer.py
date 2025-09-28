@@ -23,6 +23,7 @@ from datetime import datetime
 import pandas as pd
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
+from openpyxl.utils import get_column_letter
 import anthropic
 from typing import Dict, List, Optional
 import PyPDF2
@@ -46,7 +47,8 @@ class ContractAnalyzer:
                     pdf_reader = PyPDF2.PdfReader(file)
                     text = ""
                     for page in pdf_reader.pages:
-                        text += page.extract_text() + "\n"
+                        t = page.extract_text() or ""
+                        text += t + "\n"
                     return text
 
             elif path.suffix.lower() in ['.docx', '.doc']:
@@ -232,16 +234,27 @@ class ContractAnalyzer:
         if not currency_string or currency_string in ['null', 'N/A', 'Not found', '', 'Not specified']:
             return None
 
-        # Convert to string and clean
-        value_str = str(currency_string).strip()
+        s = str(currency_string).strip()
 
-        # Remove common currency symbols and text
-        value_str = re.sub(r'[^\d,.-]', '', value_str)
+        # Handle negatives in parentheses e.g. "(1,234.56)"
+        paren = re.search(r'\(\s*\$?\s*(-?\d{1,3}(?:,\d{3})*(?:\.\d+)?|-?\d+(?:\.\d+)?)\s*\)', s)
+        if paren:
+            try:
+                return -float(paren.group(1).replace(',', ''))
+            except ValueError:
+                pass
 
-        # Remove commas
-        value_str = value_str.replace(',', '')
+        # 1) Prefer a $-prefixed currency amount
+        m = re.search(r'\$\s*(-?\d{1,3}(?:,\d{3})*(?:\.\d+)?|-?\d+(?:\.\d+)?)', s)
+        if not m:
+            # 2) Otherwise take the first number not followed by %
+            m = re.search(r'(-?\d{1,3}(?:,\d{3})*(?:\.\d+)?|-?\d+(?:\.\d+)?)(?!\s*%)', s)
 
-        # Try to convert to float
+        if not m:
+            return None
+
+        value_str = m.group(1).replace(',', '')
+
         try:
             return float(value_str)
         except (ValueError, TypeError):
@@ -376,17 +389,19 @@ class ContractAnalyzer:
 
         # Auto-adjust column widths
         for ws in wb.worksheets:
-            for column in ws.columns:
-                max_length = 0
-                column_letter = column[0].column_letter
-                for cell in column:
-                    try:
-                        if len(str(cell.value)) > max_length:
-                            max_length = len(str(cell.value))
-                    except:
-                        pass
-                adjusted_width = min(max_length + 2, 50)
-                ws.column_dimensions[column_letter].width = adjusted_width
+            max_col = ws.max_column or 1
+            for col_idx in range(1, max_col + 1):
+                max_len = 0
+                for col in ws.iter_cols(min_col=col_idx, max_col=col_idx, min_row=1, max_row=ws.max_row):
+                    for cell in col:
+                        try:
+                            if cell.value is not None:
+                                val_len = len(str(cell.value))
+                                if val_len > max_len:
+                                    max_len = val_len
+                        except Exception:
+                            pass
+                ws.column_dimensions[get_column_letter(col_idx)].width = min(max_len + 2, 60)
 
         wb.save(file_path)
 
