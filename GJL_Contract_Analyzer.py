@@ -410,7 +410,9 @@ class ContractAnalyzerGUI:
     def __init__(self):
         self.root = tk.Tk()
         self.root.title("Contract Analyzer - Analysis-Driven (No Assumptions)")
-        self.root.geometry("1000x740")
+        self.root.geometry("1000x780")
+        # App background color (light gray-blue example)
+        self.root.configure(bg="#e6f0fa")
 
         self.analyzer = None
         self.current_analysis = None
